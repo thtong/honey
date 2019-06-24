@@ -1,0 +1,5 @@
+ echo [-neE] [arg ...]
+ help [-s] [pattern ...]
+ logout
+ pwd [-LP]
+ time [-p] PIPELINE

@@ -1,0 +1,16 @@
+---
+version: "2.3"
+services:
+
+  honeypot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: honey:latest3
+    container_name: honeypot
+    environment:
+      - SSL_VERIFY_CLIENT=false
+    ports:
+      - "19443:443"
+      - "19021:21"
+    restart: unless-stopped
