@@ -2,10 +2,9 @@
 # Final project - HTTPS/telnet Honeypot
 
 from socket import socket, AF_INET, SOCK_STREAM
-import ssl, sys, time, os.path, ConfigParser, uuid, sqlite3, plotly
-from Queue import Queue
+import ssl, sys, time, os.path, configparser, uuid, queue, sqlite3, plotly, _thread
 from string import *
-from thread import *
+# from _thread import *
 from scapy.all import *
 from p0f import P0f, P0fException
 from plotly.graph_objs import Scatter, Layout
@@ -17,7 +16,7 @@ WEBHDR200 = ('HTTP/1.1 200 OK\nContent-Type: text/html\n\n')
 WEBHDR404 = ('HTTP/1.1 404 Not Found\nContent-Type: text/html\n\n')
 WEBHDR403 = ('HTTP/1.1 403 Forbidden\nContent-Type: text/html\n\n')
 EXITAPP = False
-INTERACTIONS = Queue()
+INTERACTIONS = queue.Queue(maxsize=0)
 
 # gets content from file to server to client
 def get_content_file(prefix, filename):
@@ -426,7 +425,7 @@ def get_time():
 # Log device/client interactions and pertinent events
 # This function displays all events to stdout and stores them in sqlite3 database
 def log_interactions():
-    print '*** Starting to monitor and log interactions'
+    print ('*** Starting to monitor and log interactions')
     time.sleep(5)   # sleep for 5 seconds to wait for events to be added to queue
     try:
         db_conn = sqlite3.connect('honeypot.sqlite')    #create/open database file
@@ -447,7 +446,7 @@ def log_interactions():
             added_stuff = False             # bool tracks if there has been changes for the purpose of committing data to database file
             while not INTERACTIONS.empty(): # continue until the queue is empty
                 x = INTERACTIONS.get()      # get event item
-                print x['type'].upper(), x  # print to stdout
+                print(x['type'].upper(), x)  # print to stdout
 
                 if x['type'] == 'authentication':   # authentication event. store data in authentication table
                     cur.execute('INSERT INTO authentication (type, ip, time, username, password, success) VALUES (?,?,?,?,?,?)',
@@ -470,7 +469,7 @@ def log_interactions():
                     cur.execute('INSERT INTO client_commands (type, time, command, ip, function) VALUES (?,?,?,?,?)',
                                 (x['type'],x['time'],x['command'],x['ip'],x['function']))
                 else:
-                    print '**** SOMETHING WENT WRONG HERE', x['type']
+                    print( '**** SOMETHING WENT WRONG HERE', x['type'] )
 
                 INTERACTIONS.task_done()
 
@@ -479,7 +478,7 @@ def log_interactions():
             if added_stuff: db_conn.commit()
             time.sleep(10)                      # wait 10 seconds until we repeat the loop
     except sqlite3.Error as e:
-        print 'Error %s:' % e
+        print( 'Error %s:' % e )
     finally:
         if db_conn: db_conn.close()
         log_interactions()
@@ -505,7 +504,7 @@ def daily_trends_report():
             all_rows = cur.fetchall()
             #print all_rows  #for debug
         except sqlite3.Error as e:
-            print 'Error %s:' % e
+            print('Error %s:' % e)
         finally:
             if db_conn: db_conn.close()
 
@@ -537,15 +536,14 @@ def daily_trends_report():
 # initializes program; reads in configuration file and starts services with appropriate parameters
 # returns config file object
 def start_honeypot():
-    import thread
-    Config = ConfigParser.ConfigParser()    # initialize configparser
+    Config = configparser.ConfigParser()    # initialize configparser
     Config.read('honeypot.cfg')             # read in config file
     # start webserver thread
-    thread.start_new_thread(handle_webserver,(('0.0.0.0', int(Config.get('web_srv', 'port'))), Config))
+    _thread.start_new_thread(handle_webserver,(('0.0.0.0', int(Config.get('web_srv', 'port'))), Config))
     # start log interactions thread
-    thread.start_new_thread(log_interactions,())
+    _thread.start_new_thread(log_interactions,())
     # start daily trend report generator
-    thread.start_new_thread(daily_trends_report, ())
+    _thread.start_new_thread(daily_trends_report, ())
     # start telnet
     handle_telnet(('0.0.0.0', int(Config.get('telnet_srv', 'port'))), Config)   # initializes telnet server
     return Config
