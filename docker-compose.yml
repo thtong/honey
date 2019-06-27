@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile2alpine
+      # dockerfile: docker/Dockerfile2stretch
     image: honey:py2
     container_name: honeypot
     ports:
