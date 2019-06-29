@@ -1,5 +1,5 @@
-# Author: Thanh Tong, OPSC-540-85
-# Final project - HTTPS/telnet Honeypot
+# HTTPS/telnet Honeypot
+# uses python 2.7.16
 
 from socket import socket, AF_INET, SOCK_STREAM
 import ssl, sys, time, os.path, ConfigParser, uuid, sqlite3, plotly
@@ -9,7 +9,6 @@ from thread import *
 from scapy.all import *
 from p0f import P0f, P0fException
 from plotly.graph_objs import Scatter, Layout
-
 
 KEYFILE = 'server_key.pem'   # Private key of the server
 CERTFILE = 'server_cert.pem' # Server certificate
@@ -85,23 +84,16 @@ def webserver_response(s, p, config_obj):
                 # parse for content length and how much content has been received so far
                 contentlengthval = requestcmd.split('Content-Length: ')
                 contentlength = int(contentlengthval[1].split('\r\n')[0]) if len(contentlengthval)>1 else 0
-                #contentval = requestcmd.split('\r\n\r\n')
                 contentval = originalcmd.split('\r\n\r\n')
-                #print('***contentval =' + repr(contentval))
                 contentrecv = len(contentval[1]) if len(contentval)>1 else 0
-                #print('***content length:%s\trecv:%s' % (contentlength, contentrecv))
 
                 # continue getting messages from client until we receive all content
                 while contentrecv < contentlength:
                     moredata = s.recv(1024)
                     contentrecv = contentrecv + len(moredata)   # update received counter
-                    #print('***content recv:' + str(contentrecv))
                     requestcmd = requestcmd + strip(moredata)   # update HTTP command
                     originalcmd = originalcmd + moredata
-                    #print('***moredata:' + repr(moredata))
-                    #print('***orig/request', originalcmd, requestcmd)
 
-                #contentval = requestcmd.split('\r\n\r\n')
                 contentval = originalcmd.split('\r\n\r\n')
 
                 # parse HTTP command to figure out what client is requesting and respond appropriately
@@ -112,9 +104,7 @@ def webserver_response(s, p, config_obj):
                     headresp = WEBHDR200
                     method_obj['function'] = 'reset password'
                 elif 'commit=Login' in requestcmd:      # user attempting to login
-                    #print(repr(requestcmd))
                     # get username and password from POST data
-                    #print('***contentval=',contentval)
                     login_credential = contentval[1].split('&') if (len(contentval)>1) else [contentval,'']
                     login_username = login_credential[0][6:] if (len(login_credential[0])>6) else ''
                     login_password = login_credential[1][9:] if (len(login_credential[1])>9) else ''
@@ -143,8 +133,6 @@ def webserver_response(s, p, config_obj):
                 HEAD_resource = requestcmd.split(' HTTP/')
                 HEADURL = HEAD_resource[0][5:]
                 resourcename = HEADURL[1:].split('?')[0]
-                #print('*** URL:' + repr(HEADURL))
-                #print('*** URL1:' + repr(resourcename))
 
                 # client requested home page
                 if resourcename == '' or resourcename == 'home':
@@ -183,7 +171,7 @@ def webserver_response(s, p, config_obj):
 # n is used to ensure file does not get too large and that we do not lose all packets if
 #   program crashes
 def record_packets(n, port, verbosity):
-    #print('*** Start sniffing')
+    print('*** Start sniffing')
     INTERACTIONS.put({'type': 'info', 'message':'Starting scapy packet capture on port %s' % port,'time':get_time()})
 
     while 1:    # sniff forever
@@ -202,14 +190,13 @@ def record_packets(n, port, verbosity):
 def handle_webserver(address, config_obj):
     s = socket.socket(AF_INET, SOCK_STREAM)        # initialize tcp socket
     name, port = address
-    #print ('*** Web Server starting up on %s port %s\n' % address)
+    print ('*** Web Server starting up on %s port %s\n' % address)
     INTERACTIONS.put({'type': 'info', 'message':'Web Server starting up on %s port %s' % address,'time':get_time()})
 
     s.bind(address)                         # binds socket to address and port
     s.listen(1)                             # start listening
 
     capture = config_obj.get('mainset', 'writepcap')
-    #print('***writepcap:' + repr(capture))
     # start scapy sniffing and packet capture if capture is enabled in config file
     if capture == 'True':
         pcappackets = config_obj.get('mainset', 'pcappackets')
@@ -228,13 +215,11 @@ def handle_webserver(address, config_obj):
                             certfile=CERTFILE,
                             server_side=True
                             )
-    #print('### Waiting for a connection on port %s' % port)
     INTERACTIONS.put({'type': 'info', 'message':'Waiting for a connection on port %s' % port,'time':get_time()})
     # Wait for connections
     while 1:
         try:
             c,a = s_ssl.accept()            # accept incoming connection
-            #print('Got connection', c, a)
             clientip = a[0]
             conn_obj = {'type':'client-connect','message': 'https', 'ip': clientip,'time':get_time()}
             INTERACTIONS.put(conn_obj)
@@ -244,7 +229,6 @@ def handle_webserver(address, config_obj):
             # handle client request, multithreaded
             start_new_thread(webserver_response, (c, a, config_obj))
         except Exception as e:
-            #print('{}: {}'.format(e.__class__.__name__, e))
             INTERACTIONS.put({'type':'error', 'message':'{}: {}'.format(e.__class__.__name__, e), 'time':get_time()})
 
 
@@ -338,7 +322,7 @@ def telnet_response(s, p, banner, cmdline, config_obj):
 def handle_telnet(address, config_obj):
     s = socket.socket(AF_INET, SOCK_STREAM)  # initialize tcp socket
     name, port = address
-    #print ('*** Telnet Server starting up on %s port %s\n' % address)
+    print ('*** Telnet Server starting up on %s port %s\n' % address)
     INTERACTIONS.put({'type': 'info', 'message':'Telnet Server starting up on %s port %s' % address,'time':get_time()})
     s.bind(address)  # binds socket to address and port
     s.listen(1)  # start listening
@@ -367,7 +351,6 @@ def handle_telnet(address, config_obj):
         try:
 
             c, a = s.accept()  # accept incoming connection
-            #print('Got connection', c, a)
             clientip = a[0]
             conn_obj = {'type': 'client-connect', 'message': 'telnet', 'ip': clientip, 'time':get_time()}
             INTERACTIONS.put(conn_obj)
@@ -413,12 +396,10 @@ def handle_authentication(username, password, my_config, identifier):
     sys_password = my_config.get('authentication','password')
     if username == sys_username and password == sys_password:   # test if credentials match
         authenticated = True
-    #print('***[%s] Login attempt %s:%s %s' % (get_time(),username, password,'passed' if authenticated else 'failed'))
     auth_object = {'type':'authentication','ip':identifier,'time':get_time(),'username':username,
                    'password':password,'success':authenticated}
     INTERACTIONS.put(auth_object)           # log the authentication event
     return authenticated
-
 
 def get_time():
     return time.strftime('%Y-%m-%d %X')
@@ -484,7 +465,6 @@ def log_interactions():
         if db_conn: db_conn.close()
         log_interactions()
 
-
 # generates daily metrics report in the "daily" directory.
 # the function reports on the last 24 hours of authentication attempts
 def daily_trends_report():
@@ -511,7 +491,6 @@ def daily_trends_report():
 
         curtime = time.strftime('%Y-%m-%d %X')  # get current time to know where to put items in the list.
         curhour = curtime[11:13]                # events in the current hour should go in the last index
-        #print(curtime, curhour) # for debug
 
         for row in all_rows:        # add each event to the appropriate element in data series
             auth_time = row[1]
@@ -558,7 +537,6 @@ def main():
         global EXITAPP
         EXITAPP = True
         sys.exit()              # gracefully end when interrupt is received
-
 
 if __name__ == "__main__":
     main()
