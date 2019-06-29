@@ -3,9 +3,11 @@ MAINTAINER Thanh Tong "thtong@gmail.com"
 RUN pip install plotly
 RUN pip install --pre scapy[basic]
 RUN apt-get update
-RUN apt-get install tcpdump p0f -y
+RUN apt-get install tcpdump p0f openssl -y
 RUN pip install p0f
 COPY app /app
 WORKDIR /app
+RUN openssl req -x509 -newkey rsa:4096 -keyout server_key.pem -out server_cert.pem -days 365 -nodes -sha256 \
+-subj "/C=US/ST=VA/L=Arlington/O=for/OU=fun/CN=localhost"
 EXPOSE 8443 23
 ENTRYPOINT ["/app/entrypoint.sh"]

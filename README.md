@@ -1,8 +1,18 @@
 # honey
 ## deploy honeypot using docker-compose
 `docker-compose up -d`
+## rebuild & deploy
+```
+docker-compose build
+docker-compose up -d
+```
+## manually generate cert/key pair
+```
+openssl req -x509 -newkey rsa:4096 -keyout server_key.pem -out server_cert.pem -days 365 -nodes -sha256 \
+-subj "/C=US/ST=VA/L=Arlington/O=for/OU=fun/CN=localhost"
+```
 
-Once the honeypot program is running, clients can connect to the HTTPS service by pointing a browser at the following URL: https://THE-HOST-IP:19443/, where “THE-HOST-IP” is the ip/hostname of  the computer running the program. Clients can connect to the telnet service by executing the command: telnet THE-HOST-IP 19023. 
+Once the honeypot program is running, clients can connect to the HTTPS service by pointing a browser at the following URL: https://THE-HOST-IP/, where “THE-HOST-IP” is the ip/hostname of  the computer running the program. Clients can connect to the telnet service by executing the command: telnet THE-HOST-IP. 
 
 The ports can be changed as required via the PORT mapping in docker-compose.yml
 
