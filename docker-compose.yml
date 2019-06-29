@@ -12,4 +12,7 @@ services:
     ports:
       - "443:8443"
       - "23:23"
+    volumes:
+      - ./app/daily:/app/daily
+      - ./app/pcap:/app/pcap
     restart: unless-stopped
